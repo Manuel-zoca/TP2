@@ -48,8 +48,12 @@ const handleTabela = async (sock, msg) => {
         }
 
         // Função para enviar mensagem com menções
-        const enviar = (content) => {
-            return sock.sendMessage(from, { ...content, mentions: participants });
+        const enviar = (content, mentionEveryone = false) => {
+            const options = { ...content };
+            if (mentionEveryone && participants && participants.length > 0) {
+                options.mentions = participants;
+            }
+            return sock.sendMessage(from, options);
         };
 
         // Comando .n
@@ -83,10 +87,10 @@ const handleTabela = async (sock, msg) => {
             return;
         }
 
-        // Comando .s — Envia tudo em sequência, UMA VEZ
+        // Comando .s — Envia tudo em sequência, mas só a última mensagem menciona todos
         if (comando === '.s') {
             const imagens = [
-                { nome: 'tabela.jpg', legenda: '📊 Tabela Completa de Preços Atualizada! \n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/' },
+                { nome: 'tabela.jpg', legenda: '📊 Tabela Completa de Preços Atualizada! \n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/  ' },
                 { nome: 'Netflix.jpeg', legenda: '🎬 Promoção Netflix Ativada!' },
                 { nome: 'Netflix 2.jpg', legenda: '🎞️ Mais planos Netflix disponíveis! Aproveite antes que acabe! 💥' },
                 { nome: 'spotify.jpg', legenda: '🎧 Spotify Premium disponível por tempo limitado! Garanta já o seu acesso VIP! 🔥' },
@@ -114,31 +118,34 @@ Int+30MB Roam
 Int+30MB Roam
 
 > TOPAINETGIGAS 🛜✅` },
-                { nome: 'menu.jpeg', legenda: '🛍️ *CATÁLOGO DE SERVIÇOS* \nExplore nosso portfólio de serviços: 📲CVs, 📰Panfletos, 🖼️Cartazes e muito mais!\n\n🌐 Acesse: https://topai-net-gigas.netlify.app/  \n\nEstamos prontos para te atender com qualidade e agilidade! ✅' }
+                { nome: 'menu.jpeg', legenda: '🛍️ *CATÁLOGO DE SERVIÇOS* \nExplore nosso portfólio de serviços: 📲CVs, 📰Panfletos, 🖼️Cartazes e muito mais!\n\n🌐 Acesse: https://topai-net-gigas.netlify.app/    \n\nEstamos prontos para te atender com qualidade e agilidade! ✅' }
             ];
 
+            // Enviar todas as imagens SEM menção
             for (const img of imagens) {
                 const buffer = fs.readFileSync(imagePath(img.nome));
                 await enviar({
                     image: buffer,
                     caption: img.legenda
-                });
-                await sleep(5000); // pausa entre envios
+                }, false); // sem menção
+                await sleep(5000);
             }
 
+            // Enviar formas de pagamento SEM menção
             const formasPagamento = `📱Formas de Pagamento Atualizadas📱 💳\n\n1. M-PESA 📱\n   - Número: 848619531\n   - DINIS MARTA\n\n2. E-MOLA 💸\n   - Número: 872960710\n   - MANUEL ZOCA\n\n3. BIM 🏦\n   - Conta nº: 1059773792\n   - CHONGO MANUEL\n\nApós efetuar o pagamento, por favor, envie o comprovante da transferência juntamente com seu contato.`;
-            await enviar({ text: formasPagamento });
+            await enviar({ text: formasPagamento }, false);
+            await sleep(4000);
 
-            await enviar({
-                text: '✅ Estamos disponíveis para oferecer-te os melhores serviços ao seu dispor. Conta conosco sempre que precisar! 🙌\n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/'
-            });
+            // ÚLTIMA MENSAGEM: com menção a todos
+            const mensagemFinal = `✅ Estamos disponíveis para oferecer-te os melhores serviços ao seu dispor. Conta conosco sempre que precisar! 🙌\n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/`;
+            await enviar({ text: mensagemFinal }, true); // ✅ AQUI sim, menciona todos
 
             return;
         }
 
         // Se não for comando, envia tabela de preços (opcional)
         if (isGroup) {
-            await enviar({ text: '📢 ATENÇÃO, MEMBROS DO GRUPO!' });
+            await enviar({ text: '📢 ATENÇÃO, MEMBROS DO GRUPO!' }, false);
             await sleep(4000);
 
             const tabelaPrecos = getTabelaPrecos();
@@ -148,7 +155,7 @@ Int+30MB Roam
             }
 
             for (const parte of partes) {
-                await enviar({ text: parte });
+                await enviar({ text: parte }, false);
                 await sleep(1000);
             }
 
