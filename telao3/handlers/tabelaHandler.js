@@ -16,7 +16,7 @@ const handleTabela = async (sock, msg) => {
                      msg.message?.extendedTextMessage?.text || 
                      '';
 
-    const comando = mensagem.trim().toLowerCase();
+    const comando = mensagem.trim().toLowerCase(); // agora aceita .S também
 
     // ✅ 1. Verifica se já processou essa mensagem
     if (processedMessages.has(id)) {
@@ -87,38 +87,62 @@ const handleTabela = async (sock, msg) => {
             return;
         }
 
-        // Comando .s — Apenas Tabela, Ilimitado, Netflix e Formas de pagamento
+        // Comando .s — AGORA ENVIA APENAS: tabela, ilimitado, netflix, formas de pagamento
         if (comando === '.s') {
-            // 📊 Tabela
-            const tabelaBuffer = fs.readFileSync(imagePath('tabela.jpg'));
+            // 1. Envia Tabela
+            const bufferTabela = fs.readFileSync(imagePath('tabela.jpg'));
             await enviar({
-                image: tabelaBuffer,
-                caption: '📊 Tabela Completa de Preços Atualizada!'
+                image: bufferTabela,
+                caption: '📊 Tabela Completa de Preços Atualizada! \n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/'
             });
-            await sleep(4000);
+            await sleep(5000);
 
-            // 🎬 Netflix
-            const netflixBuffer = fs.readFileSync(imagePath('Netflix.jpeg'));
-            await enviar({
-                image: netflixBuffer,
-                caption: '🎬 Promoção Netflix Ativada!'
-            });
-            await sleep(4000);
-
-            // 📞 Ilimitado
-            const ilimitadoBuffer = fs.readFileSync(imagePath('ilimitado.png'));
+            // 2. Envia Ilimitado
+            const bufferIlimitado = fs.readFileSync(imagePath('ilimitado.png'));
             const legendaIlimitado = `📞 TUDO TOP VODACOM\n📍Chamadas e SMS ilimitadas para Todas Redes\n\n📆30 dias Tudo top\n\n450MT 🔥☎ Chamadas + SMS ilimitadas + 11GB +10min Int+30MB Roam\n550MT 🔥☎ Chamadas + SMS ilimitadas + 16GB +10min Int+30MB Roam\n650MT 🔥☎ Chamadas + SMS ilimitadas + 21GB +10min Int+30MB Roam\n850MT 🔥☎ Chamadas + SMS ilimitadas + 31GB +10min Int+30MB Roam\n1080MT 🔥☎ Chamadas + SMS ilimitadas + 41GB +10min Int+30MB Roam\n1300MT 🔥☎ Chamadas + SMS ilimitadas + 51GB +10min Int+30MB Roam\n\n> TOPAINETGIGAS 🛜✅`;
             await enviar({
-                image: ilimitadoBuffer,
+                image: bufferIlimitado,
                 caption: legendaIlimitado
             });
+            await sleep(5000);
+
+            // 3. Envia Netflix
+            const bufferNetflix = fs.readFileSync(imagePath('Netflix.jpeg'));
+            await enviar({
+                image: bufferNetflix,
+                caption: '🎬 Promoção Netflix Ativada!'
+            });
+            await sleep(5000);
+
+            // 4. Envia Formas de Pagamento
+            const formasPagamento = `📱Formas de Pagamento Atualizadas📱 💳\n\n1. M-PESA 📱\n   - Número: 848619531\n   - DINIS MARTA\n\n2. E-MOLA 💸\n   - Número: 872960710\n   - MANUEL ZOCA\n\n3. BIM 🏦\n   - Conta nº: 1059773792\n   - CHONGO MANUEL\n\nApós efetuar o pagamento, por favor, envie o comprovante da transferência juntamente com seu contato.`;
+            await enviar({ text: formasPagamento });
             await sleep(4000);
 
-            // 💳 Formas de pagamento
-            const formasPagamento = `📱Formas de Pagamento Atualizadas📱 💳\n\n1. M-PESA 📱\n   - Número: 848619531\n   - DINIS MARTA\n\n2. E-MOLA 💸\n   - Número: 872960710\n   - MANUEL ZOCA\n\n3. BIM 🏦\n   - Conta nº: 1059773792\n   - CHONGO MANUEL\n\nApós efetuar o pagamento, por favor, envie o comprovante da transferência juntamente com seu contato.`;
-            await enviar({ text: formasPagamento }, false);
+            // 5. ÚLTIMA MENSAGEM: com menção a todos
+            const mensagemFinal = `✅ Estamos disponíveis para oferecer-te os melhores serviços ao seu dispor. Conta conosco sempre que precisar! 🙌\n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/`;
+            await enviar({ text: mensagemFinal }, true); // menciona todos
 
             return;
+        }
+
+        // Se não for comando, envia tabela de preços (opcional)
+        if (isGroup) {
+            await enviar({ text: '📢 ATENÇÃO, MEMBROS DO GRUPO!' }, false);
+            await sleep(4000);
+
+            const tabelaPrecos = getTabelaPrecos();
+            const partes = [];
+            for (let i = 0; i < tabelaPrecos.length; i += 1000) {
+                partes.push(tabelaPrecos.substring(i, i + 1000));
+            }
+
+            for (const parte of partes) {
+                await enviar({ text: parte }, false);
+                await sleep(1000);
+            }
+
+            console.log(`✅ Tabela de preços enviada em ${partes.length} parte(s).`);
         }
 
     } catch (error) {
