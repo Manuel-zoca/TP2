@@ -16,7 +16,7 @@ const handleTabela = async (sock, msg) => {
                      msg.message?.extendedTextMessage?.text || 
                      '';
 
-    const comando = mensagem.trim().toLowerCase();
+    const comando = mensagem.trim().toLowerCase(); // agora aceita .S também
 
     // ✅ 1. Verifica se já processou essa mensagem
     if (processedMessages.has(id)) {
@@ -29,7 +29,7 @@ const handleTabela = async (sock, msg) => {
 
     // ✅ 3. Só processa se for um dos comandos
     if (!['.n', '.t', '.i', '.s'].includes(comando)) {
-        return; // Não é comando, ignora (ou pode enviar tabela, conforme lógica)
+        return; // Não é comando, ignora
     }
 
     try {
@@ -47,13 +47,27 @@ const handleTabela = async (sock, msg) => {
             participants = groupMetadata.participants.map(p => p.id);
         }
 
-        // Função para enviar mensagem com menções
-        const enviar = (content, mentionEveryone = false) => {
+        // ✅ Função ATUALIZADA: com RETRY para erros de sessão/chave
+        const enviar = async (content, mentionEveryone = false, retries = 3) => {
             const options = { ...content };
             if (mentionEveryone && participants && participants.length > 0) {
                 options.mentions = participants;
             }
-            return sock.sendMessage(from, options);
+
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    return await sock.sendMessage(from, options);
+                } catch (err) {
+                    const isSessionError = err.message.includes('No sessions') || err.message.includes('SenderKeyRecord');
+                    if (isSessionError && i < retries) {
+                        console.warn(`⚠️ Tentativa ${i + 1}/${retries} falhou (${err.message}). Tentando novamente em 2s...`);
+                        await sleep(2000);
+                        continue;
+                    } else {
+                        throw err; // Se for outro erro ou acabaram as tentativas
+                    }
+                }
+            }
         };
 
         // Comando .n
@@ -87,58 +101,41 @@ const handleTabela = async (sock, msg) => {
             return;
         }
 
-        // Comando .s — Envia tudo em sequência, mas só a última mensagem menciona todos
+        // Comando .s — AGORA ENVIA APENAS: tabela, ilimitado, netflix, formas de pagamento
         if (comando === '.s') {
-            const imagens = [
-                { nome: 'tabela.jpg', legenda: '📊 Tabela Completa de Preços Atualizada! \n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/     ' },
-                { nome: 'Netflix.jpeg', legenda: '🎬 Promoção Netflix Ativada!' },
-                { nome: 'Netflix 2.jpg', legenda: '🎞️ Mais planos Netflix disponíveis! Aproveite antes que acabe! 💥' },
-                { nome: 'spotify.jpg', legenda: '🎧 Spotify Premium disponível por tempo limitado! Garanta já o seu acesso VIP! 🔥' },
-                { nome: 'ilimitado.png', legenda: `📞 TUDO TOP VODACOM\n
-📍Chamadas e SMS ilimitadas para Todas Redes
+            // 1. Envia Tabela
+            const bufferTabela = fs.readFileSync(imagePath('tabela.jpg'));
+            await enviar({
+                image: bufferTabela,
+                caption: '📊 Tabela Completa de Preços Atualizada! \n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/  '
+            });
+            await sleep(5000);
 
-📆30 dias Tudo top
+            // 2. Envia Ilimitado
+            const bufferIlimitado = fs.readFileSync(imagePath('ilimitado.png'));
+            const legendaIlimitado = `📞 TUDO TOP VODACOM\n📍Chamadas e SMS ilimitadas para Todas Redes\n\n📆30 dias Tudo top\n\n450MT 🔥☎ Chamadas + SMS ilimitadas + 11GB +10min Int+30MB Roam\n550MT 🔥☎ Chamadas + SMS ilimitadas + 16GB +10min Int+30MB Roam\n650MT 🔥☎ Chamadas + SMS ilimitadas + 21GB +10min Int+30MB Roam\n850MT 🔥☎ Chamadas + SMS ilimitadas + 31GB +10min Int+30MB Roam\n1080MT 🔥☎ Chamadas + SMS ilimitadas + 41GB +10min Int+30MB Roam\n1300MT 🔥☎ Chamadas + SMS ilimitadas + 51GB +10min Int+30MB Roam\n\n> TOPAINETGIGAS 🛜✅`;
+            await enviar({
+                image: bufferIlimitado,
+                caption: legendaIlimitado
+            });
+            await sleep(5000);
 
-450MT 🔥☎ Chamadas + SMS ilimitadas  + 11GB  +10min
-Int+30MB Roam
+            // 3. Envia Netflix
+            const bufferNetflix = fs.readFileSync(imagePath('Netflix.jpeg'));
+            await enviar({
+                image: bufferNetflix,
+                caption: '🎬 Promoção Netflix Ativada!'
+            });
+            await sleep(5000);
 
-550MT 🔥☎ Chamadas + SMS ilimitadas + 16GB  +10min
-Int+30MB Roam
-
-650MT 🔥☎ Chamadas + SMS ilimitadas + 21GB  +10min
-Int+30MB Roam
-
-850MT 🔥☎ Chamadas + SMS ilimitadas + 31GB  +10min
-Int+30MB Roam
-
-1080MT 🔥☎ Chamadas + SMS ilimitadas + 41GB +10min
-Int+30MB Roam
-
-1300MT 🔥☎ Chamadas + SMS ilimitadas + 51GB +10min
-Int+30MB Roam
-
-> TOPAINETGIGAS 🛜✅` },
-                { nome: 'menu.jpeg', legenda: '🛍️ *CATÁLOGO DE SERVIÇOS* \nExplore nosso portfólio de serviços: 📲CVs, 📰Panfletos, 🖼️Cartazes e muito mais!\n\n🌐 Acesse: https://topai-net-gigas.netlify.app/       \n\nEstamos prontos para te atender com qualidade e agilidade! ✅' }
-            ];
-
-            // Enviar todas as imagens SEM menção
-            for (const img of imagens) {
-                const buffer = fs.readFileSync(imagePath(img.nome));
-                await enviar({
-                    image: buffer,
-                    caption: img.legenda
-                }, false); // sem menção
-                await sleep(5000);
-            }
-
-            // Enviar formas de pagamento SEM menção
+            // 4. Envia Formas de Pagamento
             const formasPagamento = `📱Formas de Pagamento Atualizadas📱 💳\n\n1. M-PESA 📱\n   - Número: 848619531\n   - DINIS MARTA\n\n2. E-MOLA 💸\n   - Número: 872960710\n   - MANUEL ZOCA\n\n3. BIM 🏦\n   - Conta nº: 1059773792\n   - CHONGO MANUEL\n\nApós efetuar o pagamento, por favor, envie o comprovante da transferência juntamente com seu contato.`;
-            await enviar({ text: formasPagamento }, false);
+            await enviar({ text: formasPagamento });
             await sleep(4000);
 
-            // ÚLTIMA MENSAGEM: com menção a todos
-            const mensagemFinal = `✅ Estamos disponíveis para oferecer-te os melhores serviços ao seu dispor. Conta conosco sempre que precisar! 🙌\n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/   `;
-            await enviar({ text: mensagemFinal }, true); // ✅ AQUI sim, menciona todos
+            // 5. ÚLTIMA MENSAGEM: com menção a todos
+            const mensagemFinal = `✅ Estamos disponíveis para oferecer-te os melhores serviços ao seu dispor. Conta conosco sempre que precisar! 🙌\n🌐 Acesse nosso site oficial: https://topai-net-gigas.netlify.app/  `;
+            await enviar({ text: mensagemFinal }, true); // menciona todos
 
             return;
         }
@@ -172,4 +169,4 @@ Int+30MB Roam
     }
 };
 
-module.exports = { handleTabela };   
+module.exports = { handleTabela };
